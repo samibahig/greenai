@@ -1,29 +1,38 @@
 # 🌿 GreenAI
 
-> Lightweight carbon footprint tracking for ML workflows — visible, measurable, actionable.
+> The simplest way to track ML carbon footprint.
 
-GreenAI makes the energy cost of machine learning **visible in a few lines of code**. It acts as a unified, simplified layer over existing green-AI tools, giving developers and researchers an instant picture of what their models cost without any complex setup.
+```python
+from greenai import GreenAI
+
+g = GreenAI()
+g.start()
+train()
+g.stop()
+g.report()
+```
+
+```
+┌──────────────────────────┐
+│  🌿 GreenAI              │
+├──────────────────────────┤
+│  Duration    2m 34s      │
+│  Energy      0.234 Wh    │
+│  CO₂         0.054 g     │
+└──────────────────────────┘
+```
+
+Three metrics. One call. No configuration needed.
 
 ---
 
-## Features
-
-- **Minimal API** — `start()` / `stop()` is all you need
-- **Unified report** — duration, energy (kWh / Wh), and CO₂ (kg / g) in one object
-- **Modular backend system** — default heuristic estimator, or plug in [CodeCarbon](https://github.com/mlco2/codecarbon) for hardware-level measurements
-- **Smart recommendations** — FP16, quantization, pruning, carbon-aware scheduling
-- **Framework-agnostic** — works with PyTorch, TensorFlow, HuggingFace, or plain Python
-- **Zero required dependencies** — the default backend needs nothing extra
-
----
-
-## Installation
+## Install
 
 ```bash
 pip install greenai
 ```
 
-With CodeCarbon backend support:
+With real hardware measurements via [CodeCarbon](https://github.com/mlco2/codecarbon):
 
 ```bash
 pip install greenai[codecarbon]
@@ -31,122 +40,112 @@ pip install greenai[codecarbon]
 
 ---
 
-## Quickstart
+## Usage
 
-### Basic usage
+### Basic
 
 ```python
-from greenai import Tracker
+from greenai import GreenAI
 
-tracker = Tracker()
-tracker.start()
-
-# ... your ML code here ...
+g = GreenAI()
+g.start()
 train_model(data)
-
-report = tracker.stop()
-print(report)
-# [GreenAI] Duration: 142.30s | Energy: 5.9292 Wh | CO₂: 1.3815 g  (backend: simple)
+g.stop()
+g.report()          # prints the summary, returns a dict
 ```
 
 ### Context manager
 
 ```python
-from greenai import Tracker
-
-with Tracker() as tracker:
+with GreenAI() as g:
     train_model(data)
-
-print(tracker.report)
+g.report()
 ```
 
 ### Decorator
 
 ```python
-from greenai import Tracker
+from greenai import GreenAI
 
-@Tracker.track
+@GreenAI.track
 def train_model(data):
     ...
 
-train_model(data)  # prints report automatically
+train_model(data)   # prints report automatically after the call
 ```
 
-### One-liner context manager
+### Jupyter / notebooks
 
 ```python
-from greenai import Tracker
+from greenai import GreenAI
 
-with Tracker.measure() as t:
+with GreenAI.measure() as g:
     train_model(data)
 
-print(t.report.to_dict())
+g.report()          # clean output, works inline in any cell
 ```
 
 ---
 
-## Report object
+## What you get
+
+`g.report()` prints a clean 3-line box and returns a dict:
+
+| Key               | Description              |
+|-------------------|--------------------------|
+| `duration_seconds`| Wall-clock time          |
+| `energy_kwh`      | Energy in kWh            |
+| `co2_kg`          | CO₂ emitted in kg        |
+| `backend`         | Which backend was used   |
+| `started_at`      | ISO timestamp (UTC)      |
+| `stopped_at`      | ISO timestamp (UTC)      |
+
+Quick access properties (no dict needed):
 
 ```python
-report = tracker.stop()
-
-report.duration_seconds  # float — wall-clock seconds
-report.energy_kwh        # float — kWh
-report.energy_wh         # float — Wh  (shortcut)
-report.co2_kg            # float — kg CO₂
-report.co2_g             # float — grams CO₂  (shortcut)
-report.backend           # str — which backend was used
-report.metadata          # dict — extra backend data
-report.started_at        # datetime (UTC)
-report.stopped_at        # datetime (UTC)
-
-report.summary()         # human-readable one-liner string
-report.to_dict()         # serialize to plain dict (JSON-friendly)
+g.duration    # seconds (float)
+g.energy_wh   # Wh (float)
+g.co2_g       # grams CO₂ (float)
 ```
 
 ---
 
 ## Backends
 
-### SimpleBackend (default)
+### Default — SimpleBackend
 
-Heuristic estimator based on wall-clock time and assumed system wattage. No external dependencies.
+Works out of the box. Estimates energy from wall-clock time and an assumed system wattage.
 
 ```python
-from greenai import Tracker
+from greenai import GreenAI
 from greenai.backends import SimpleBackend
 
-tracker = Tracker(
+g = GreenAI(
     backend=SimpleBackend(
-        average_wattage=200,           # Watts — tune to your hardware
-        co2_intensity_g_per_kwh=400,   # g CO₂/kWh — tune to your grid
+        average_wattage=200,          # tune to your hardware (default: 150 W)
+        co2_intensity_g_per_kwh=400,  # tune to your grid   (default: 233 g/kWh)
     )
 )
 ```
 
-### CodeCarbonBackend
-
-Real hardware-level measurements via [CodeCarbon](https://github.com/mlco2/codecarbon).
+### CodeCarbonBackend — real hardware measurements
 
 ```bash
 pip install greenai[codecarbon]
 ```
 
 ```python
-from greenai import Tracker
+from greenai import GreenAI
 from greenai.backends import CodeCarbonBackend
 
-tracker = Tracker(
-    backend=CodeCarbonBackend(country_iso_code="FRA")
-)
-tracker.start()
+g = GreenAI(backend=CodeCarbonBackend(country_iso_code="FRA"))
+g.start()
 train_model(data)
-report = tracker.stop()
+g.stop()
+g.report()
 ```
 
 ### Custom backend
-
-Implement `BaseBackend` to plug in any measurement tool:
 
 ```python
 from greenai.backends import BaseBackend
@@ -157,9 +156,9 @@ class MyBackend(BaseBackend):
 
     @property
     def energy_kwh(self) -> float:
-        return ...  # your measurement here
+        return ...  # your measurement
 
-tracker = Tracker(backend=MyBackend())
+g = GreenAI(backend=MyBackend())
 ```
 
 ---
@@ -167,34 +166,39 @@ tracker = Tracker(backend=MyBackend())
 ## Recommendations
 
 ```python
-from greenai import Tracker, Recommender
+from greenai import GreenAI, Recommender
 
-tracker = Tracker()
-tracker.start()
+g = GreenAI()
+g.start()
 train_model(data)
-report = tracker.stop()
+g.stop()
+g.report()
 
 rec = Recommender(
     model_size_params=175_000_000,  # optional
-    carbon_budget_kg=0.01,          # optional — triggers alert if exceeded
-    framework="pytorch",            # optional — adds framework-specific hints
+    carbon_budget_kg=0.01,          # optional — alerts if exceeded
+    framework="pytorch",            # optional — framework-specific hints
 )
 
-for suggestion in rec.analyze(report):
-    print(suggestion)
-
-# [HIGH] Carbon budget exceeded: Emissions (15.2300 g CO₂) exceed your budget by 52.3%. Apply the suggestions below. (varies savings)
-# [HIGH] Use mixed-precision training (FP16 / BF16): ... (30–60% energy savings)
-# [HIGH] Apply post-training quantization (INT8 / INT4): ... (50–75% inference energy savings)
-# [LOW]  Schedule training during low-carbon hours: ... (10–50% CO₂ savings)
+for tip in rec.analyze_dict(g.report()):
+    print(tip)
 ```
+
+---
+
+## Design principles
+
+1. **Zero friction** — works without reading the docs
+2. **Three metrics only** — duration, energy, CO₂. Nothing else by default.
+3. **Pluggable** — swap backends without changing your code
+4. **Universal** — PyTorch, TensorFlow, HuggingFace, plain Python, notebooks, scripts
 
 ---
 
 ## Running tests
 
 ```bash
-pip install greenai[dev]
+pip install pytest
 pytest
 ```
 
@@ -204,28 +208,24 @@ pytest
 
 ```
 greenai/
-├── tracker.py        ← Tracker class (start / stop / context manager / decorator)
-├── report.py         ← Report dataclass
-├── recommender.py    ← Heuristic optimization suggestions
+├── core.py          ← GreenAI  (main simple class)
+├── tracker.py       ← Tracker  (power-user API, kept for compatibility)
+├── report.py        ← Report   (dataclass for Tracker output)
+├── recommender.py   ← Recommender (optimization suggestions)
 └── backends/
-    ├── base.py       ← BaseBackend abstract class
-    ├── simple.py     ← Default time-based estimator
+    ├── base.py      ← BaseBackend abstract class
+    ├── simple.py    ← Default heuristic estimator
     └── codecarbon.py ← CodeCarbon adapter (optional)
 ```
-
-**Design principles:**
-1. **Simple to use** — one import, two method calls
-2. **Extensible** — swap or add backends without touching user code
-3. **Universal** — works in training loops, notebooks, and production scripts
 
 ---
 
 ## Roadmap
 
-- Carbon-aware scheduling (pick the greenest training window automatically)
-- Model comparator (side-by-side energy cost of multiple model variants)
-- Multi-objective optimization (accuracy vs. energy vs. cost)
-- CLI tool (`greenai run python train.py`)
+- Carbon-aware scheduling (pick the greenest window automatically)
+- Model comparator (energy cost of several models side by side)
+- CLI: `greenai run python train.py`
+- Multi-objective suggestions: accuracy vs. energy vs. cost
 
 ---
 
