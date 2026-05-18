@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from greenai.report import Report
+from typing import Dict, Any
 
 
 @dataclass
