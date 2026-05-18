@@ -28,14 +28,19 @@ Three metrics. One call. No configuration needed.
 
 ## Install
 
+**From GitHub (no PyPI needed):**
 ```bash
-pip install greenai
+pip install git+https://github.com/samibahig/greenai.git
+```
+
+**Or download the wheel from the [latest release](https://github.com/samibahig/greenai/releases/latest):**
+```bash
+pip install greenai-0.3.0-py3-none-any.whl
 ```
 
 With real hardware measurements via [CodeCarbon](https://github.com/mlco2/codecarbon):
-
 ```bash
-pip install greenai[codecarbon]
+pip install "git+https://github.com/samibahig/greenai.git#egg=greenai[codecarbon]"
 ```
 
 ---
