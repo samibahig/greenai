@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "greenai"
-version = "0.1.0"
+version = "0.3.0"
 description = "Lightweight carbon footprint tracking for ML workflows"
 readme = "README.md"
 license = { text = "MIT" }
@@ -28,6 +28,8 @@ dependencies = []
 
 [project.optional-dependencies]
 codecarbon = ["codecarbon>=2.3"]
+huggingface = ["transformers>=4.30"]
+all = ["codecarbon>=2.3", "transformers>=4.30"]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
